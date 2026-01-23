@@ -4,11 +4,17 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import * as XLSX from 'xlsx';
 import { getRegistros, addRegistro, updateRegistro, deleteRegistro } from './firebase';
 
-const ACCOUNTS = ['GMC', 'EDUCA', 'MARIBEL', 'EGISTO'];
+const ACCOUNTS = [
+  { key: 'gmc', label: 'GMC', color: '#8B5CF6' },        // Morado
+  { key: 'educa', label: 'EDUCA', color: '#F97316' },    // Naranja
+  { key: 'maribel', label: 'MARIBEL', color: '#10B981' }, // Verde
+  { key: 'egisto', label: 'EGISTO', color: '#EC4899' },   // Rosa
+];
+
 const METRICS = [
-  { key: 'seg', label: 'Seguidores', icon: Users, color: '#0077B5' },
-  { key: 'pub', label: 'Publicaciones', icon: FileText, color: '#00A0DC' },
-  { key: 'imp', label: 'Impresiones', icon: Eye, color: '#0e76a8' },
+  { key: 'seg', label: 'Seguidores', icon: Users },
+  { key: 'pub', label: 'Publicaciones', icon: FileText },
+  { key: 'imp', label: 'Impresiones', icon: Eye },
 ];
 
 const Card = ({ children, className = '' }) => (
@@ -42,7 +48,7 @@ const DataModal = ({ isOpen, onClose, onSave, editData, existingDates, loading }
       setForm(editData);
     } else {
       const empty = { fecha: new Date().toISOString().split('T')[0] };
-      ACCOUNTS.forEach(a => METRICS.forEach(m => empty[`${a.toLowerCase()}_${m.key}`] = 0));
+      ACCOUNTS.forEach(a => METRICS.forEach(m => empty[`${a.key}_${m.key}`] = 0));
       setForm(empty);
     }
   }, [editData, isOpen]);
@@ -75,9 +81,9 @@ const DataModal = ({ isOpen, onClose, onSave, editData, existingDates, loading }
           </div>
           
           {ACCOUNTS.map(account => (
-            <div key={account} className="border rounded-lg p-3">
-              <h3 className="font-semibold text-[#0077B5] mb-2 flex items-center gap-2">
-                <Linkedin size={16} /> {account}
+            <div key={account.key} className="border rounded-lg p-3" style={{ borderLeftColor: account.color, borderLeftWidth: '4px' }}>
+              <h3 className="font-semibold mb-2 flex items-center gap-2" style={{ color: account.color }}>
+                <Linkedin size={16} /> {account.label}
               </h3>
               <div className="grid grid-cols-3 gap-3">
                 {METRICS.map(m => (
@@ -86,8 +92,8 @@ const DataModal = ({ isOpen, onClose, onSave, editData, existingDates, loading }
                     <input
                       type="number"
                       min="0"
-                      value={form[`${account.toLowerCase()}_${m.key}`] || 0}
-                      onChange={e => setForm({ ...form, [`${account.toLowerCase()}_${m.key}`]: parseInt(e.target.value) || 0 })}
+                      value={form[`${account.key}_${m.key}`] || 0}
+                      onChange={e => setForm({ ...form, [`${account.key}_${m.key}`]: parseInt(e.target.value) || 0 })}
                       className="w-full border rounded px-2 py-1 text-sm"
                     />
                   </div>
@@ -110,11 +116,11 @@ const DataModal = ({ isOpen, onClose, onSave, editData, existingDates, loading }
 const exportExcel = (data) => {
   const wb = XLSX.utils.book_new();
   const headers = ['FECHA'];
-  ACCOUNTS.forEach(a => METRICS.forEach(m => headers.push(`${a}_${m.label.toUpperCase()}`)));
+  ACCOUNTS.forEach(a => METRICS.forEach(m => headers.push(`${a.label}_${m.label.toUpperCase()}`)));
   
   const rows = data.map(r => {
     const row = [r.fecha];
-    ACCOUNTS.forEach(a => METRICS.forEach(m => row.push(r[`${a.toLowerCase()}_${m.key}`] || 0)));
+    ACCOUNTS.forEach(a => METRICS.forEach(m => row.push(r[`${a.key}_${m.key}`] || 0)));
     return row;
   });
   
@@ -130,7 +136,7 @@ export default function App() {
   const [online, setOnline] = useState(true);
   const [view, setView] = useState('dashboard');
   const [modal, setModal] = useState({ open: false, edit: null });
-  const [selectedAccount, setSelectedAccount] = useState('GMC');
+  const [selectedMetric, setSelectedMetric] = useState('seg');
   const [toast, setToast] = useState(null);
 
   // Cargar datos de Firebase al iniciar
@@ -207,6 +213,8 @@ export default function App() {
     );
   }
 
+  const currentMetric = METRICS.find(m => m.key === selectedMetric);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {toast && (
@@ -274,22 +282,22 @@ export default function App() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {ACCOUNTS.map(account => (
-                    <Card key={account} className="hover:shadow-md transition-shadow">
+                    <Card key={account.key} className="hover:shadow-md transition-shadow" style={{ borderTopColor: account.color, borderTopWidth: '4px' }}>
                       <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 bg-[#0077B5] rounded flex items-center justify-center">
+                        <div className="w-8 h-8 rounded flex items-center justify-center" style={{ backgroundColor: account.color }}>
                           <Linkedin className="text-white" size={16} />
                         </div>
-                        <span className="font-bold text-gray-800">{account}</span>
+                        <span className="font-bold text-gray-800">{account.label}</span>
                       </div>
                       <div className="space-y-2">
                         {METRICS.map(m => {
-                          const key = `${account.toLowerCase()}_${m.key}`;
+                          const key = `${account.key}_${m.key}`;
                           const current = latest?.[key] || 0;
                           const previous = prev?.[key];
                           return (
                             <div key={m.key} className="flex justify-between items-center">
                               <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <m.icon size={14} style={{ color: m.color }} />
+                                <m.icon size={14} />
                                 {m.label}
                               </div>
                               <div className="text-right">
@@ -316,12 +324,12 @@ export default function App() {
                         <YAxis />
                         <Tooltip />
                         <Legend />
-                        {ACCOUNTS.map((account, i) => (
+                        {ACCOUNTS.map(account => (
                           <Bar 
-                            key={account} 
-                            dataKey={`${account.toLowerCase()}_seg`} 
-                            name={account}
-                            fill={['#0077B5', '#00A0DC', '#0e76a8', '#004182'][i]}
+                            key={account.key} 
+                            dataKey={`${account.key}_seg`} 
+                            name={account.label}
+                            fill={account.color}
                           />
                         ))}
                       </BarChart>
@@ -337,18 +345,28 @@ export default function App() {
           <div className="space-y-6">
             <Card>
               <div className="flex flex-wrap gap-2 mb-4">
-                {ACCOUNTS.map(account => (
+                {METRICS.map(metric => (
                   <button
-                    key={account}
-                    onClick={() => setSelectedAccount(account)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      selectedAccount === account 
+                    key={metric.key}
+                    onClick={() => setSelectedMetric(metric.key)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                      selectedMetric === metric.key 
                         ? 'bg-[#0077B5] text-white' 
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    {account}
+                    <metric.icon size={16} /> {metric.label}
                   </button>
+                ))}
+              </div>
+
+              {/* Leyenda de colores */}
+              <div className="flex flex-wrap gap-4 mb-4 pb-4 border-b">
+                {ACCOUNTS.map(account => (
+                  <div key={account.key} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: account.color }}></div>
+                    <span className="text-sm font-medium">{account.label}</span>
+                  </div>
                 ))}
               </div>
               
@@ -360,15 +378,15 @@ export default function App() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    {METRICS.map(m => (
+                    {ACCOUNTS.map(account => (
                       <Line
-                        key={m.key}
+                        key={account.key}
                         type="monotone"
-                        dataKey={`${selectedAccount.toLowerCase()}_${m.key}`}
-                        name={m.label}
-                        stroke={m.color}
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
+                        dataKey={`${account.key}_${selectedMetric}`}
+                        name={account.label}
+                        stroke={account.color}
+                        strokeWidth={3}
+                        dot={{ r: 5, fill: account.color }}
                       />
                     ))}
                   </LineChart>
@@ -396,7 +414,9 @@ export default function App() {
                   <tr className="border-b">
                     <th className="text-left py-2 px-2">Fecha</th>
                     {ACCOUNTS.map(a => (
-                      <th key={a} colSpan={3} className="text-center py-2 px-2 bg-gray-50">{a}</th>
+                      <th key={a.key} colSpan={3} className="text-center py-2 px-2" style={{ backgroundColor: `${a.color}20` }}>
+                        <span style={{ color: a.color }}>{a.label}</span>
+                      </th>
                     ))}
                     <th className="text-center py-2 px-2">Acciones</th>
                   </tr>
@@ -404,7 +424,7 @@ export default function App() {
                     <th></th>
                     {ACCOUNTS.map(a => (
                       METRICS.map(m => (
-                        <th key={`${a}-${m.key}`} className="py-1 px-1">{m.label.substring(0, 3)}</th>
+                        <th key={`${a.key}-${m.key}`} className="py-1 px-1">{m.label.substring(0, 3)}</th>
                       ))
                     ))}
                     <th></th>
@@ -416,8 +436,8 @@ export default function App() {
                       <td className="py-2 px-2 font-medium">{row.fecha}</td>
                       {ACCOUNTS.map(a => (
                         METRICS.map(m => (
-                          <td key={`${a}-${m.key}`} className="py-2 px-1 text-center">
-                            {(row[`${a.toLowerCase()}_${m.key}`] || 0).toLocaleString()}
+                          <td key={`${a.key}-${m.key}`} className="py-2 px-1 text-center">
+                            {(row[`${a.key}_${m.key}`] || 0).toLocaleString()}
                           </td>
                         ))
                       ))}
