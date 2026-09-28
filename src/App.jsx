@@ -17,6 +17,17 @@ const METRICS = [
   { key: 'imp', label: 'Impresiones', icon: Eye },
 ];
 
+// En Tendencias ya no se grafica Publicaciones (se sigue capturando y mostrando en Dashboard/Historial)
+const TREND_METRICS = METRICS.filter(m => m.key !== 'pub');
+
+// Tendencias se divide en dos gráficas para que la escala de EGISTO no aplaste a las demás
+const TREND_GROUPS = [
+  { id: 'egisto', title: 'EGISTO', keys: ['egisto'] },
+  { id: 'otras', title: 'GMC · EDUCA · MARIBEL', keys: ['gmc', 'educa', 'maribel'] },
+];
+
+const formatAxis = (v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : v);
+
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-xl shadow-sm border p-4 ${className}`}>{children}</div>
 );
@@ -345,7 +356,7 @@ export default function App() {
           <div className="space-y-6">
             <Card>
               <div className="flex flex-wrap gap-2 mb-4">
-                {METRICS.map(metric => (
+                {TREND_METRICS.map(metric => (
                   <button
                     key={metric.key}
                     onClick={() => setSelectedMetric(metric.key)}
@@ -360,43 +371,50 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Leyenda de colores */}
-              <div className="flex flex-wrap gap-4 mb-4 pb-4 border-b">
-                {ACCOUNTS.map(account => (
-                  <div key={account.key} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: account.color }}></div>
-                    <span className="text-sm font-medium">{account.label}</span>
-                  </div>
-                ))}
-              </div>
-              
-              {chartData.length > 1 ? (
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="fecha" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    {ACCOUNTS.map(account => (
-                      <Line
-                        key={account.key}
-                        type="monotone"
-                        dataKey={`${account.key}_${selectedMetric}`}
-                        name={account.label}
-                        stroke={account.color}
-                        strokeWidth={3}
-                        dot={{ r: 5, fill: account.color }}
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
+              {chartData.length <= 1 && (
                 <div className="text-center py-12 text-gray-500">
                   Necesitas al menos 2 registros para ver tendencias
                 </div>
               )}
             </Card>
+
+            {chartData.length > 1 && TREND_GROUPS.map(group => {
+              const groupAccounts = ACCOUNTS.filter(a => group.keys.includes(a.key));
+              return (
+                <Card key={group.id}>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b">
+                    <h2 className="font-bold text-gray-800">{group.title} · {currentMetric?.label}</h2>
+                    <div className="flex flex-wrap gap-4">
+                      {groupAccounts.map(account => (
+                        <div key={account.key} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: account.color }}></div>
+                          <span className="text-sm font-medium">{account.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={340}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="fecha" />
+                      <YAxis tickFormatter={formatAxis} width={60} />
+                      <Tooltip formatter={(v) => Number(v || 0).toLocaleString('es-MX')} />
+                      {groupAccounts.map(account => (
+                        <Line
+                          key={account.key}
+                          type="monotone"
+                          dataKey={`${account.key}_${selectedMetric}`}
+                          name={account.label}
+                          stroke={account.color}
+                          strokeWidth={3}
+                          dot={{ r: 4, fill: account.color }}
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Card>
+              );
+            })}
           </div>
         )}
 
